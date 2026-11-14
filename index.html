@@ -1,481 +1,483 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureKey - Zero-Knowledge Password Vault</title>
+    <title>SecureKey Vault - Zero-Knowledge Password Manager</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#eef2ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca'
-                        }
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        accent: '#3b82f6'
                     }
                 }
             }
         }
     </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
 </head>
-<body class="h-full flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white">
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Toast Notification Container -->
-    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-    <!-- ================= AUTH VIEW (Setup / Unlock) ================= -->
-    <div id="authScreen" class="min-h-full flex items-center justify-center p-4">
-        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl shadow-black/60 relative overflow-hidden">
-            
-            <!-- Glow Decor -->
-            <div class="absolute -top-16 -right-16 w-36 h-36 bg-brand-500/10 rounded-full blur-2xl pointer-events-none"></div>
-
-            <!-- Brand Header -->
-            <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-14 h-14 bg-brand-600/10 border border-brand-500/20 text-brand-500 rounded-2xl mb-3 shadow-inner">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                    </svg>
-                </div>
-                <h1 class="text-2xl font-bold tracking-tight text-white">SecureKey Vault</h1>
-                <p id="authSubtitle" class="text-sm text-slate-400 mt-1">Zero-Knowledge Client-Side Encryption</p>
-            </div>
-
-            <!-- Setup Form (Initial Run) -->
-            <form id="setupForm" class="space-y-4 hidden" onsubmit="handleVaultSetup(event)">
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Create Master Password</label>
-                    <input type="password" id="setupPass" required minlength="8" placeholder="••••••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition text-white">
-                    <p class="text-xs text-slate-500 mt-1">Must be at least 8 characters. Do not forget it: it cannot be recovered.</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Confirm Master Password</label>
-                    <input type="password" id="setupPassConfirm" required minlength="8" placeholder="••••••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition text-white">
-                </div>
-                <button type="submit" class="w-full py-3 px-4 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-brand-600/20 transition-all flex items-center justify-center gap-2">
-                    <span>Initialize Vault</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                </button>
-            </form>
-
-            <!-- Unlock Form -->
-            <form id="unlockForm" class="space-y-4 hidden" onsubmit="handleVaultUnlock(event)">
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Master Password</label>
-                    <input type="password" id="unlockPass" required placeholder="••••••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition text-white">
-                </div>
-                <button type="submit" class="w-full py-3 px-4 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-brand-600/20 transition-all flex items-center justify-center gap-2">
-                    <span>Unlock Vault</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
-                </button>
-                <div class="pt-2 text-center">
-                    <button type="button" onclick="confirmResetVault()" class="text-xs text-rose-400/80 hover:text-rose-400 underline">Erase & Reset Vault</button>
-                </div>
-            </form>
-
-            <!-- Security Notice -->
-            <div class="mt-6 pt-4 border-t border-slate-800 text-center flex items-center justify-center gap-2 text-xs text-slate-500">
-                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                <span>AES-256-GCM &bull; PBKDF2 (250k Rounds)</span>
-            </div>
+    <!-- Header -->
+    <header class="bg-cardbg border-b border-slate-800 sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-shield-halved text-accent text-2xl"></i>
+            <h1 class="text-xl font-bold tracking-wide">SecureKey Vault</h1>
         </div>
-    </div>
+        <div id="header-actions" class="hidden flex items-center space-x-3">
+            <button onclick="openGeneratorModal()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-1">
+                <i class="fa-solid fa-key text-xs"></i>
+                <span class="hidden sm:inline">Generator</span>
+            </button>
+            <button onclick="openAddModal()" class="bg-accent hover:bg-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-1">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span>Add Item</span>
+            </button>
+            <button onclick="lockVault()" class="text-slate-400 hover:text-red-400 p-1.5 transition" title="Lock Vault">
+                <i class="fa-solid fa-lock text-lg"></i>
+            </button>
+        </div>
+    </header>
 
-    <!-- ================= MAIN VAULT VIEW ================= -->
-    <div id="vaultScreen" class="hidden min-h-full flex-col">
-        <!-- Navbar -->
-        <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-20">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 bg-brand-600/10 border border-brand-500/20 text-brand-500 rounded-xl flex items-center justify-center">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+    <!-- Main Container -->
+    <main class="flex-grow container mx-auto px-4 py-6 max-w-2xl">
+
+        <!-- SETUP / AUTH VIEW -->
+        <section id="auth-view" class="flex flex-col items-center justify-center min-h-[75vh]">
+            <div class="bg-cardbg p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-800 w-full max-w-md text-center">
+                
+                <!-- Animated Character / Icon Illustration -->
+                <div class="w-20 h-20 bg-blue-500/10 text-accent rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl animate-float border border-blue-500/20 shadow-inner relative">
+                    <i id="auth-icon" class="fa-solid fa-user-shield"></i>
+                    <!-- Confusion badge indicating forgotten password warning -->
+                    <span id="auth-badge" class="absolute -top-2 -right-2 bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center space-x-1">
+                        <i class="fa-solid fa-lightbulb text-[10px]"></i>
+                    </span>
+                </div>
+
+                <h2 id="auth-title" class="text-2xl font-bold mb-2">Create Master Password</h2>
+                <p id="auth-desc" class="text-slate-400 text-sm mb-6">
+                    Set a secure master password. <strong>Remember it well!</strong> Because of Zero-Knowledge local encryption, if you forget it, it cannot be recovered.
+                </p>
+                
+                <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4 text-left">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Master Password</label>
+                        <input type="password" id="master-pass" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-accent" placeholder="Enter master password">
                     </div>
-                    <span class="font-bold text-lg text-white tracking-tight">SecureKey Vault</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <!-- Backup JSON -->
-                    <button onclick="exportVaultEncrypted()" title="Export Encrypted Backup" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    </button>
-                    <!-- Import JSON -->
-                    <button onclick="document.getElementById('importFile').click()" title="Import Encrypted Vault" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                    </button>
-                    <input type="file" id="importFile" accept=".json" class="hidden" onchange="importVaultEncrypted(event)">
-                    <!-- Lock Button -->
-                    <button onclick="lockVault()" class="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white border border-slate-700 rounded-xl transition ml-2">
-                        <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        <span>Lock</span>
-                    </button>
-                </div>
+                    <div id="confirm-pass-box">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Confirm Master Password</label>
+                        <input type="password" id="confirm-pass" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-accent" placeholder="Re-enter master password">
+                    </div>
+                    <button type="submit" id="auth-btn" class="w-full bg-accent hover:bg-blue-600 font-semibold py-3 rounded-lg transition shadow-lg">Create Vault</button>
+                </form>
             </div>
-        </header>
+        </section>
 
-        <!-- Content Workspace -->
-        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
-            <!-- Toolbar -->
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-                <div class="relative flex-1 max-w-md">
-                    <svg class="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input type="text" id="searchInput" oninput="renderVaultItems()" placeholder="Search credentials..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition text-slate-100 placeholder-slate-500">
+        <!-- DASHBOARD VIEW -->
+        <section id="dashboard-view" class="hidden space-y-4">
+            
+            <!-- Stats / Info Banner (Anti-boring design) -->
+            <div class="bg-gradient-to-r from-blue-900/30 to-slate-900 border border-blue-500/30 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-500/20 text-accent rounded-xl flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-vault"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-200">Secure Vault Active</h3>
+                        <p id="vault-stats-text" class="text-xs text-slate-400">0 items securely stored locally</p>
+                    </div>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button onclick="openPasswordGenModal()" class="px-4 py-2.5 text-sm font-semibold bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-xl transition flex items-center gap-2">
-                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        <span>Generator</span>
-                    </button>
-                    <button onclick="openCredentialModal()" class="px-4 py-2.5 text-sm font-semibold bg-brand-600 hover:bg-brand-500 text-white rounded-xl shadow-lg shadow-brand-600/20 transition flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        <span>Add Item</span>
-                    </button>
+                <div class="text-right hidden sm:block">
+                    <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/30 font-medium">
+                        <i class="fa-solid fa-shield-check mr-1"></i> End-to-End Encrypted
+                    </span>
                 </div>
             </div>
 
-            <!-- Items Grid -->
-            <div id="credentialsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-
-            <!-- Empty State -->
-            <div id="emptyState" class="hidden flex-col items-center justify-center p-12 text-center my-auto border-2 border-dashed border-slate-800 rounded-2xl">
-                <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-slate-600 mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
-                </div>
-                <h3 class="text-base font-semibold text-slate-300">No passwords found</h3>
-                <p class="text-sm text-slate-500 mt-1 max-w-sm">Keep your passwords, secure notes, and credentials safe with end-to-end local encryption.</p>
-                <button onclick="openCredentialModal()" class="mt-4 px-4 py-2 text-sm font-medium text-brand-500 hover:text-brand-400 bg-brand-500/10 hover:bg-brand-500/20 rounded-xl transition">Create first entry</button>
+            <!-- Search Bar -->
+            <div class="flex items-center bg-cardbg border border-slate-800 rounded-xl px-4 py-2 shadow-sm">
+                <i class="fa-solid fa-search text-slate-400 mr-3"></i>
+                <input type="text" id="search-input" oninput="renderVault()" placeholder="Search credentials..." class="bg-transparent w-full focus:outline-none text-slate-100 text-sm">
             </div>
-        </main>
-    </div>
 
-    <!-- ================= ADD / EDIT MODAL ================= -->
-    <div id="credentialModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-                <h3 id="modalTitle" class="text-lg font-bold text-white">Add Credential</h3>
-                <button onclick="closeCredentialModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+            <!-- Credentials List -->
+            <div id="vault-list" class="space-y-3">
+                <!-- Dynamically populated -->
             </div>
-            <form id="credentialForm" onsubmit="handleSaveCredential(event)" class="p-6 space-y-4">
-                <input type="hidden" id="entryIndex">
+        </section>
+
+    </main>
+
+    <!-- ADD/EDIT MODAL -->
+    <div id="credential-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-lg font-bold">Add Credential</h3>
+                <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-100"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <form onsubmit="saveCredential(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Title / Service</label>
-                    <input type="text" id="entryTitle" required placeholder="e.g. Facebook, Google" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 text-white">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Select Service / Platform</label>
+                    <select id="cred-preset" onchange="handlePresetChange()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-accent">
+                        <option value="Facebook">🔵 Facebook</option>
+                        <option value="TikTok">⚫ TikTok</option>
+                        <option value="Twitter / X">🐦 Twitter / X</option>
+                        <option value="Instagram">📸 Instagram</option>
+                        <option value="Google / Gmail">📧 Google / Gmail</option>
+                        <option value="YouTube">▶️ YouTube</option>
+                        <option value="WhatsApp">💬 WhatsApp</option>
+                        <option value="Netflix">🍿 Netflix</option>
+                        <option value="Other">➕ Other (Custom Name)</option>
+                    </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Username / Email</label>
-                    <input type="text" id="entryUsername" required placeholder="user@domain.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 text-white">
+
+                <div id="custom-title-box" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Custom Title / Name</label>
+                    <input type="text" id="cred-custom-title" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-accent" placeholder="e.g. My Bank Account">
                 </div>
+
                 <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="block text-xs font-medium text-slate-400">Password</label>
-                        <button type="button" onclick="inlineGeneratePassword()" class="text-xs text-brand-400 hover:text-brand-300 font-semibold">Generate Strong</button>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Username / Email / Phone</label>
+                    <input type="text" id="cred-username" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-accent" placeholder="username@example.com">
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase">Password</label>
+                        <button type="button" onclick="generatePasswordInForm()" class="text-xs text-accent hover:underline flex items-center space-x-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>Generate Strong</span>
+                        </button>
                     </div>
                     <div class="relative">
-                        <input type="password" id="entryPassword" required placeholder="Password" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono text-white">
-                        <button type="button" onclick="toggleFieldVisibility('entryPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        <input type="text" id="cred-password" required class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-4 pr-10 py-2.5 text-slate-100 focus:outline-none focus:border-accent font-mono text-sm">
+                        <button type="button" onclick="copyPasswordInput()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200" title="Copy">
+                            <i class="fa-solid fa-copy"></i>
                         </button>
                     </div>
                 </div>
+
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Website URL (Optional)</label>
-                    <input type="url" id="entryUrl" placeholder="https://example.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 text-white">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Website URL (Optional)</label>
+                    <input type="url" id="cred-url" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-accent" placeholder="https://example.com">
                 </div>
+
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Notes (Optional)</label>
-                    <textarea id="entryNotes" rows="2" placeholder="Recovery notes..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none text-white"></textarea>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Notes (Optional)</label>
+                    <textarea id="cred-notes" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-accent text-sm" placeholder="Any extra info..."></textarea>
                 </div>
-                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-                    <button type="button" onclick="closeCredentialModal()" class="px-4 py-2.5 text-sm text-slate-400 hover:text-white">Cancel</button>
-                    <button type="submit" class="px-5 py-2.5 text-sm font-semibold bg-brand-600 hover:bg-brand-500 text-white rounded-xl shadow-lg">Save Entry</button>
+
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeAddModal()" class="w-1/2 bg-slate-800 hover:bg-slate-700 font-semibold py-2.5 rounded-lg transition text-sm">Cancel</button>
+                    <button type="submit" class="w-1/2 bg-accent hover:bg-blue-600 font-semibold py-2.5 rounded-lg transition text-sm shadow-lg">Save Entry</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- ================= PASSWORD GENERATOR MODAL ================= -->
-    <div id="generatorModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-                <h3 class="text-lg font-bold text-white">Password Generator</h3>
-                <button onclick="closePasswordGenModal()" class="text-slate-400 hover:text-white p-1">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    <!-- PASSWORD GENERATOR MODAL -->
+    <div id="generator-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Password Generator</h3>
+                <button onclick="closeGeneratorModal()" class="text-slate-400 hover:text-slate-100"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 mb-4 flex items-center justify-between">
+                <span id="gen-output" class="font-mono text-accent text-sm select-all break-all mr-2">Click generate</span>
+                <button onclick="copyGeneratedPassword()" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg text-slate-300 hover:text-white transition">
+                    <i class="fa-solid fa-copy"></i>
                 </button>
             </div>
-            <div class="p-6 space-y-5">
-                <div class="relative bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-                    <span id="genOutput" class="font-mono text-sm break-all font-semibold text-emerald-400 select-all pr-10">Generating...</span>
-                    <button onclick="copyGeneratedPassword()" class="text-slate-400 hover:text-white p-1.5 rounded-lg bg-slate-800" title="Copy">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                    </button>
-                </div>
-                <div class="space-y-4">
-                    <div>
-                        <div class="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                            <span>Length</span>
-                            <span id="genLengthVal">20</span>
-                        </div>
-                        <input type="range" id="genLength" min="8" max="64" value="20" oninput="updateGeneratorUI()" class="w-full accent-brand-500 cursor-pointer">
-                    </div>
-                </div>
-                <button onclick="updateGeneratorUI()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium text-sm rounded-xl transition">Regenerate</button>
-            </div>
+            <button onclick="generateNewPasswordText()" class="w-full bg-accent hover:bg-blue-600 font-semibold py-2.5 rounded-lg transition text-sm shadow-lg">Generate New</button>
         </div>
     </div>
 
-    <!-- ================= SCRIPT ================= -->
+    <!-- JS Logic -->
     <script>
-        const STORAGE_KEY = 'securekey_encrypted_vault';
-        let activeKey = null;
-        let activeVaultData = [];
+        let masterKey = null;
+        let encryptedVaultData = localStorage.getItem('securekey_vault');
+        let vaultItems = [];
 
-        const bufferToBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
-        const base64ToBuffer = (str) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
-
-        async function deriveKeyFromPassword(password, salt) {
-            const enc = new TextEncoder();
-            const rawKey = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
-            return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 250000, hash: 'SHA-256' }, rawKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-        }
-
-        async function encryptPayload(dataObj, key, salt) {
-            const enc = new TextEncoder();
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const encodedData = enc.encode(JSON.stringify(dataObj));
-            const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, encodedData);
-            return { version: 1, salt: bufferToBase64(salt), iv: bufferToBase64(iv), ciphertext: bufferToBase64(ciphertext) };
-        }
-
-        async function decryptPayload(payload, key) {
-            const dec = new TextDecoder();
-            const iv = base64ToBuffer(payload.iv);
-            const ciphertext = base64ToBuffer(payload.ciphertext);
-            const decryptedBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ciphertext);
-            return JSON.parse(dec.decode(decryptedBuffer));
-        }
-
-        window.addEventListener('DOMContentLoaded', () => { checkVaultState(); });
-
-        function checkVaultState() {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            const authScreen = document.getElementById('authScreen');
-            const vaultScreen = document.getElementById('vaultScreen');
-            const setupForm = document.getElementById('setupForm');
-            const unlockForm = document.getElementById('unlockForm');
-            const authSubtitle = document.getElementById('authSubtitle');
-
-            if (!stored) {
-                authScreen.classList.remove('hidden');
-                vaultScreen.classList.add('hidden');
-                setupForm.classList.remove('hidden');
-                unlockForm.classList.add('hidden');
-                authSubtitle.innerText = 'Create your master password';
-            } else if (!activeKey) {
-                authScreen.classList.remove('hidden');
-                vaultScreen.classList.add('hidden');
-                setupForm.classList.add('hidden');
-                unlockForm.classList.remove('hidden');
-                authSubtitle.innerText = 'Enter your master password';
+        window.onload = function() {
+            if (!encryptedVaultData) {
+                setupAuthMode('create');
             } else {
-                authScreen.classList.add('hidden');
-                vaultScreen.classList.remove('hidden');
-                vaultScreen.classList.add('flex');
-                renderVaultItems();
+                setupAuthMode('unlock');
+            }
+        };
+
+        function setupAuthMode(mode) {
+            const title = document.getElementById('auth-title');
+            const desc = document.getElementById('auth-desc');
+            const btn = document.getElementById('auth-btn');
+            const confirmBox = document.getElementById('confirm-pass-box');
+            const icon = document.getElementById('auth-icon');
+
+            if (mode === 'create') {
+                title.innerText = "Create Master Password";
+                desc.innerHTML = `Set a secure master password. <strong>Remember it well!</strong> Because of Zero-Knowledge encryption, if you forget it, it cannot be recovered.`;
+                btn.innerText = "Create Vault";
+                confirmBox.style.display = "block";
+                icon.className = "fa-solid fa-user-shield";
+            } else {
+                title.innerText = "Unlock Vault";
+                desc.innerHTML = `Enter your master password to decrypt your local credentials. <em>Don't forget it, or your vault stays locked forever!</em>`;
+                btn.innerText = "Unlock Vault";
+                confirmBox.style.display = "none";
+                icon.className = "fa-solid fa-lock";
             }
         }
 
-        async function handleVaultSetup(e) {
-            e.preventDefault();
-            const pass = document.getElementById('setupPass').value;
-            const confirm = document.getElementById('setupPassConfirm').value;
-            if (pass !== confirm) { showToast('Passwords do not match', 'error'); return; }
-            try {
-                const salt = crypto.getRandomValues(new Uint8Array(16));
-                activeKey = await deriveKeyFromPassword(pass, salt);
-                activeVaultData = [];
-                const encryptedRecord = await encryptPayload(activeVaultData, activeKey, salt);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(encryptedRecord));
-                showToast('Vault created!', 'success');
-                checkVaultState();
-            } catch (err) { showToast('Setup failed', 'error'); }
-        }
+        async function handleAuth(event) {
+            event.preventDefault();
+            const pass = document.getElementById('master-pass').value;
 
-        async function handleVaultUnlock(e) {
-            e.preventDefault();
-            const pass = document.getElementById('unlockPass').value;
-            const storedRaw = localStorage.getItem(STORAGE_KEY);
-            try {
-                const payload = JSON.parse(storedRaw);
-                const salt = base64ToBuffer(payload.salt);
-                const derivedKey = await deriveKeyFromPassword(pass, salt);
-                activeVaultData = await decryptPayload(payload, derivedKey);
-                activeKey = derivedKey;
-                document.getElementById('unlockPass').value = '';
-                showToast('Vault unlocked', 'success');
-                checkVaultState();
-            } catch (err) { showToast('Incorrect master password', 'error'); }
+            if (!encryptedVaultData) {
+                const confirmPass = document.getElementById('confirm-pass').value;
+                if (pass !== confirmPass) {
+                    alert("Master passwords do not match!");
+                    return;
+                }
+                masterKey = pass;
+                vaultItems = [];
+                await saveVaultToStorage();
+                setupAuthMode('unlock');
+                document.getElementById('master-pass').value = '';
+                alert("Vault created successfully! Now enter your master password to unlock.");
+            } else {
+                try {
+                    const decrypted = decryptData(encryptedVaultData, pass);
+                    if (decrypted !== null) {
+                        masterKey = pass;
+                        vaultItems = decrypted;
+                        document.getElementById('auth-view').classList.add('hidden');
+                        document.getElementById('dashboard-view').classList.remove('hidden');
+                        document.getElementById('header-actions').classList.remove('hidden');
+                        document.getElementById('master-pass').value = '';
+                        renderVault();
+                    } else {
+                        alert("Incorrect master password!");
+                    }
+                } catch (e) {
+                    alert("Incorrect master password or corrupted data!");
+                }
+            }
         }
 
         function lockVault() {
-            activeKey = null;
-            activeVaultData = [];
-            showToast('Vault locked', 'info');
-            checkVaultState();
+            masterKey = null;
+            vaultItems = [];
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('header-actions').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+            setupAuthMode('unlock');
         }
 
-        function confirmResetVault() {
-            if (confirm('Erase entire vault?')) { localStorage.removeItem(STORAGE_KEY); lockVault(); }
-        }
-
-        async function persistVault() {
-            if (!activeKey) return;
-            const existingRaw = JSON.parse(localStorage.getItem(STORAGE_KEY));
-            const salt = base64ToBuffer(existingRaw.salt);
-            const payload = await encryptPayload(activeVaultData, activeKey, salt);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-        }
-
-        function openCredentialModal(index = null) {
-            const modal = document.getElementById('credentialModal');
-            const form = document.getElementById('credentialForm');
-            form.reset();
-            if (index !== null) {
-                const item = activeVaultData[index];
-                document.getElementById('entryIndex').value = index;
-                document.getElementById('entryTitle').value = item.title;
-                document.getElementById('entryUsername').value = item.username;
-                document.getElementById('entryPassword').value = item.password;
-                document.getElementById('entryUrl').value = item.url || '';
-                document.getElementById('entryNotes').value = item.notes || '';
-            } else {
-                document.getElementById('entryIndex').value = '';
+        function encryptData(dataObj, pass) {
+            const jsonStr = JSON.stringify(dataObj);
+            let encoded = "";
+            for (let i = 0; i < jsonStr.length; i++) {
+                let charCode = jsonStr.charCodeAt(i) ^ pass.charCodeAt(i % pass.length);
+                encoded += String.fromCharCode(charCode);
             }
-            modal.classList.remove('hidden');
+            return btoa(encodeURIComponent(encoded));
         }
 
-        function closeCredentialModal() { document.getElementById('credentialModal').classList.add('hidden'); }
-
-        async function handleSaveCredential(e) {
-            e.preventDefault();
-            const index = document.getElementById('entryIndex').value;
-            const item = {
-                title: document.getElementById('entryTitle').value.trim(),
-                username: document.getElementById('entryUsername').value.trim(),
-                password: document.getElementById('entryPassword').value,
-                url: document.getElementById('entryUrl').value.trim(),
-                notes: document.getElementById('entryNotes').value.trim()
-            };
-            if (index !== '') { activeVaultData[parseInt(index, 10)] = item; }
-            else { activeVaultData.unshift(item); }
-            await persistVault();
-            renderVaultItems();
-            closeCredentialModal();
-            showToast('Credential saved', 'success');
-        }
-
-        async function deleteCredential(index) {
-            if (confirm('Delete this entry?')) {
-                activeVaultData.splice(index, 1);
-                await persistVault();
-                renderVaultItems();
-                showToast('Deleted', 'info');
+        function decryptData(ciphertext, pass) {
+            try {
+                let decoded = decodeURIComponent(atob(ciphertext));
+                let original = "";
+                for (let i = 0; i < decoded.length; i++) {
+                    let charCode = decoded.charCodeAt(i) ^ pass.charCodeAt(i % pass.length);
+                    original += String.fromCharCode(charCode);
+                }
+                return JSON.parse(original);
+            } catch (e) {
+                return null;
             }
         }
 
-        function renderVaultItems() {
-            const listContainer = document.getElementById('credentialsList');
-            const emptyState = document.getElementById('emptyState');
-            const query = (document.getElementById('searchInput').value || '').toLowerCase();
-            listContainer.innerHTML = '';
-            const filtered = activeVaultData.map((item, idx) => ({ ...item, originalIndex: idx })).filter(item => item.title.toLowerCase().includes(query) || item.username.toLowerCase().includes(query));
-            if (filtered.length === 0) { emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); }
-            else { emptyState.classList.add('hidden'); emptyState.classList.remove('flex'); }
-            filtered.forEach(item => {
-                const card = document.createElement('div');
-                card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-sm";
-                card.innerHTML = `
-                    <div>
-                        <div class="flex items-start justify-between gap-2 mb-3">
-                            <div><h4 class="font-bold text-white text-base">${escapeHtml(item.title)}</h4><p class="text-xs text-slate-400 font-mono">${escapeHtml(item.username)}</p></div>
-                            <div class="flex items-center gap-1">
-                                <button onclick="openCredentialModal(${item.originalIndex})" class="p-1.5 text-slate-400 hover:text-white rounded-lg">Edit</button>
-                                <button onclick="deleteCredential(${item.originalIndex})" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg">Del</button>
-                            </div>
+        async function saveVaultToStorage() {
+            encryptedVaultData = encryptData(vaultItems, masterKey);
+            localStorage.setItem('securekey_vault', encryptedVaultData);
+        }
+
+        function renderVault() {
+            const listEl = document.getElementById('vault-list');
+            const statsText = document.getElementById('vault-stats-text');
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = vaultItems.filter(item => 
+                item.title.toLowerCase().includes(query) || 
+                item.username.toLowerCase().includes(query)
+            );
+
+            statsText.innerText = `${vaultItems.length} item${vaultItems.length === 1 ? '' : 's'} securely stored locally`;
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 text-center space-y-3 shadow-sm">
+                        <div class="w-14 h-14 bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mx-auto text-xl animate-float">
+                            <i class="fa-solid fa-folder-open"></i>
                         </div>
-                        <div class="flex items-center justify-between py-1.5 px-3 bg-slate-950/60 rounded-xl text-xs border border-slate-800">
-                            <span id="passSpan-${item.originalIndex}" class="text-slate-400 font-mono tracking-widest">••••••••••••</span>
-                            <div class="flex items-center gap-2">
-                                <button onclick="toggleCardPassword(${item.originalIndex})" class="text-brand-400 hover:underline">Show</button>
-                                <button onclick="copyToClipboard('${escapeJs(item.password)}')" class="text-slate-400 hover:text-white">Copy</button>
-                            </div>
-                        </div>
+                        <h4 class="font-bold text-slate-200">No passwords found</h4>
+                        <p class="text-slate-400 text-sm">Keep your credentials safe with local encryption.</p>
+                        <button onclick="openAddModal()" class="bg-accent hover:bg-blue-600 px-4 py-2 rounded-xl text-sm font-medium transition shadow-md inline-block">Add Item</button>
                     </div>`;
-                listContainer.appendChild(card);
-            });
+                return;
+            }
+
+            listEl.innerHTML = filtered.map((item, index) => `
+                <div class="bg-cardbg border border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-sm hover:border-slate-700 transition">
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <div class="w-10 h-10 bg-slate-800 text-accent rounded-xl flex items-center justify-center flex-shrink-0 text-base font-bold">
+                            ${item.title.charAt(0).toUpperCase()}
+                        </div>
+                        <div class="overflow-hidden">
+                            <h4 class="font-bold text-sm truncate">${escapeHtml(item.title)}</h4>
+                            <p class="text-slate-400 text-xs truncate">${escapeHtml(item.username)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1 flex-shrink-0">
+                        <button onclick="copyToClipboard('${escapeJs(item.password)}')" class="p-2 text-slate-400 hover:text-slate-200 transition" title="Copy Password">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                        <button onclick="deleteItem(${index})" class="p-2 text-slate-400 hover:text-red-400 transition" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        function toggleCardPassword(index) {
-            const span = document.getElementById(`passSpan-${index}`);
-            if (span.innerText === '••••••••••••') { span.innerText = activeVaultData[index].password; span.classList.remove('tracking-widest'); }
-            else { span.innerText = '••••••••••••'; span.classList.add('tracking-widest'); }
+        function openAddModal() {
+            document.getElementById('credential-modal').classList.remove('hidden');
+            document.getElementById('cred-preset').value = "Facebook";
+            handlePresetChange();
+            document.getElementById('cred-username').value = '';
+            document.getElementById('cred-password').value = generateRandomPassword();
+            document.getElementById('cred-url').value = '';
+            document.getElementById('cred-notes').value = '';
         }
 
-        function toggleFieldVisibility(id) { const el = document.getElementById(id); el.type = el.type === 'password' ? 'text' : 'password'; }
-
-        function generateSecurePassword(len = 20) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
-            const array = new Uint32Array(len);
-            crypto.getRandomValues(array);
-            return Array.from(array, x => chars[x % chars.length]).join('');
+        function closeAddModal() {
+            document.getElementById('credential-modal').classList.add('hidden');
         }
 
-        function openPasswordGenModal() { document.getElementById('generatorModal').classList.remove('hidden'); updateGeneratorUI(); }
-        function closePasswordGenModal() { document.getElementById('generatorModal').classList.add('hidden'); }
-        function updateGeneratorUI() {
-            const len = parseInt(document.getElementById('genLength').value, 10);
-            document.getElementById('genLengthVal').innerText = len;
-            document.getElementById('genOutput').innerText = generateSecurePassword(len);
-        }
-        function copyGeneratedPassword() { copyToClipboard(document.getElementById('genOutput').innerText); }
-        function inlineGeneratePassword() { const pwd = generateSecurePassword(24); const f = document.getElementById('entryPassword'); f.value = pwd; f.type = 'text'; }
+        function handlePresetChange() {
+            const preset = document.getElementById('cred-preset').value;
+            const customBox = document.getElementById('custom-title-box');
+            const urlInput = document.getElementById('cred-url');
 
-        function exportVaultEncrypted() {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (!stored) return;
-            const blob = new Blob([stored], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = 'vault-backup.json'; a.click();
-        }
-
-        function importVaultEncrypted(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const r = new FileReader();
-            r.onload = (ev) => {
-                localStorage.setItem(STORAGE_KEY, ev.target.result);
-                lockVault();
-                showToast('Imported successfully', 'success');
-            };
-            r.readAsText(file);
+            if (preset === 'Other') {
+                customBox.classList.remove('hidden');
+                document.getElementById('cred-custom-title').value = '';
+                urlInput.value = '';
+            } else {
+                customBox.classList.add('hidden');
+                if (preset === 'Facebook') urlInput.value = 'https://facebook.com';
+                else if (preset === 'TikTok') urlInput.value = 'https://tiktok.com';
+                else if (preset === 'Twitter / X') urlInput.value = 'https://twitter.com';
+                else if (preset === 'Instagram') urlInput.value = 'https://instagram.com';
+                else if (preset === 'Google / Gmail') urlInput.value = 'https://accounts.google.com';
+                else if (preset === 'YouTube') urlInput.value = 'https://youtube.com';
+                else if (preset === 'WhatsApp') urlInput.value = 'https://whatsapp.com';
+                else if (preset === 'Netflix') urlInput.value = 'https://netflix.com';
+            }
         }
 
-        function copyToClipboard(text) { navigator.clipboard.writeText(text); showToast('Copied to clipboard', 'success'); }
-        function showToast(msg, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const t = document.createElement('div');
-            t.className = `px-4 py-2 border rounded-xl text-sm shadow-lg bg-slate-900 border-slate-700 text-white`;
-            t.innerText = msg;
-            container.appendChild(t);
-            setTimeout(() => t.remove(), 2500);
+        async function saveCredential(event) {
+            event.preventDefault();
+            const preset = document.getElementById('cred-preset').value;
+            let title = preset;
+            if (preset === 'Other') {
+                title = document.getElementById('cred-custom-title').value.trim();
+                if (!title) {
+                    alert("Please enter a custom title.");
+                    return;
+                }
+            }
+
+            const username = document.getElementById('cred-username').value.trim();
+            const password = document.getElementById('cred-password').value.trim();
+            const url = document.getElementById('cred-url').value.trim();
+            const notes = document.getElementById('cred-notes').value.trim();
+
+            vaultItems.push({ title, username, password, url, notes });
+            await saveVaultToStorage();
+            closeAddModal();
+            renderVault();
         }
-        function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-        function escapeJs(str) { return String(str).replace(/'/g, "\\'"); }
+
+        async function deleteItem(index) {
+            if (confirm("Are you sure you want to delete this credential?")) {
+                vaultItems.splice(index, 1);
+                await saveVaultToStorage();
+                renderVault();
+            }
+        }
+
+        function generateRandomPassword() {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$*!";
+            let pass = "";
+            for (let i = 0; i < 14; i++) {
+                pass += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return pass;
+        }
+
+        function generatePasswordInForm() {
+            document.getElementById('cred-password').value = generateRandomPassword();
+        }
+
+        function openGeneratorModal() {
+            document.getElementById('generator-modal').classList.remove('hidden');
+            generateNewPasswordText();
+        }
+
+        function closeGeneratorModal() {
+            document.getElementById('generator-modal').classList.add('hidden');
+        }
+
+        function generateNewPasswordText() {
+            document.getElementById('gen-output').innerText = generateRandomPassword();
+        }
+
+        function copyGeneratedPassword() {
+            const text = document.getElementById('gen-output').innerText;
+            navigator.clipboard.writeText(text);
+            alert("Password copied to clipboard!");
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert("Password copied to clipboard!");
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function escapeJs(str) {
+            return str.replace(/'/g, "\\'");
+        }
     </script>
 </body>
 </html>
